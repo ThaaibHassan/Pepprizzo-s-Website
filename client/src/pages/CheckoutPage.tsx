@@ -9,7 +9,24 @@ const CheckoutPage: React.FC = () => {
   const { items, clearCart } = useCartStore();
   const { user } = useAuthStore();
   
-  const [formData, setFormData] = useState({
+  interface FormData {
+    deliveryType: 'delivery' | 'pickup';
+    address: {
+      street: string;
+      city: string;
+      state: string;
+      zipCode: string;
+      instructions: string;
+    };
+    phone: string;
+    paymentMethod: 'card';
+    cardNumber: string;
+    expiryDate: string;
+    cvv: string;
+    nameOnCard: string;
+  }
+
+  const [formData, setFormData] = useState<FormData>({
     deliveryType: 'delivery',
     address: {
       street: '',
@@ -34,13 +51,15 @@ const CheckoutPage: React.FC = () => {
   const handleInputChange = (field: string, value: string) => {
     if (field.includes('.')) {
       const [parent, child] = field.split('.');
-      setFormData(prev => ({
-        ...prev,
-        [parent]: {
-          ...prev[parent as keyof typeof prev],
-          [child]: value
-        }
-      }));
+      if (parent === 'address') {
+        setFormData(prev => ({
+          ...prev,
+          address: {
+            ...prev.address,
+            [child]: value
+          }
+        }));
+      }
     } else {
       setFormData(prev => ({
         ...prev,

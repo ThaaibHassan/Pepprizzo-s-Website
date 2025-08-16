@@ -18,15 +18,7 @@ const Layout = () => {
       <Footer />
       
       {/* Cart Sidebar */}
-      <CartSidebar isOpen={isOpen} onClose={closeCart} />
-      
-      {/* Backdrop for cart */}
-      {isOpen && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-40"
-          onClick={closeCart}
-        />
-      )}
+      <CartSidebar />
     </div>
   )
 }
