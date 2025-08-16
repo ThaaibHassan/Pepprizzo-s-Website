@@ -3,10 +3,16 @@ services:
     name: peprizzos-backend
     env: node
     plan: free
-    buildCommand: npm install
+    buildCommand: npm run install-all
     startCommand: npm start
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
         value: 10000
+      - key: JWT_SECRET
+        value: your-super-secret-jwt-key-change-this
+      - key: CLIENT_URL
+        value: https://peprizzos-pizza.netlify.app
+      - key: SESSION_SECRET
+        value: your-super-secret-session-key-change-this

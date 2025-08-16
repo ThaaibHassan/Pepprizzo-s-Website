@@ -68,7 +68,22 @@ app.get('/health', (req, res) => {
   res.status(200).json({ 
     status: 'OK', 
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV 
+    environment: process.env.NODE_ENV,
+    port: process.env.PORT,
+    clientUrl: process.env.CLIENT_URL
+  });
+});
+
+// Root route for testing
+app.get('/', (req, res) => {
+  res.status(200).json({ 
+    message: '🍕 Peprizzo\'s Backend Server is running!',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV,
+    endpoints: {
+      health: '/health',
+      api: '/api'
+    }
   });
 });
 
@@ -114,11 +129,19 @@ app.use('*', (req, res) => {
 });
 
 const PORT = process.env.PORT || 5001;
+const HOST = process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost';
 
-server.listen(PORT, () => {
-  console.log(`🍕 Peprizzo's Server running on port ${PORT}`);
+server.listen(PORT, HOST, () => {
+  console.log(`🍕 Peprizzo's Server running on ${HOST}:${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV}`);
-  console.log(`Health check: http://localhost:${PORT}/health`);
+  console.log(`Health check: http://${HOST}:${PORT}/health`);
+}).on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`Port ${PORT} is already in use`);
+  } else {
+    console.error('Server error:', err);
+  }
+  process.exit(1);
 });
 
 // Graceful shutdown
