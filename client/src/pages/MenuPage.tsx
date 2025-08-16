@@ -4,6 +4,7 @@ import { PhotoIcon } from '@heroicons/react/24/outline';
 import { useMenuStore } from '../stores/menuStore';
 import { useCartStore } from '../stores/cartStore';
 import toast from 'react-hot-toast';
+import TestImage from '../components/TestImage';
 
 const MenuPage: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -92,6 +93,9 @@ const MenuPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Test Images */}
+      <TestImage />
+      
       {/* Header */}
       <div className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -201,12 +205,9 @@ const MenuPage: React.FC = () => {
                     alt={item.name}
                     className="w-full h-48 object-cover"
                     onError={(e) => {
+                      console.error('Image failed to load:', item.image_url);
                       e.currentTarget.src = '/placeholder-pizza.svg'
                     }}
-                    onLoad={(e) => {
-                      e.currentTarget.style.opacity = '1'
-                    }}
-                    style={{ opacity: 0, transition: 'opacity 0.3s ease-in-out' }}
                   />
                   {/* Fallback for when image fails to load */}
                   <div className="absolute inset-0 bg-gray-100 flex items-center justify-center" style={{ display: 'none' }}>
