@@ -3,7 +3,7 @@ import toast from 'react-hot-toast'
 
 // Create axios instance for production
 export const api = axios.create({
-  baseURL: process.env.NODE_ENV === 'production' 
+  baseURL: import.meta.env.PROD 
     ? 'https://peprizzos-backend.onrender.com/api'  // Production backend URL
     : 'http://localhost:5001/api', // Local development backend URL
   timeout: 10000,
