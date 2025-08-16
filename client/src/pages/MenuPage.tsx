@@ -200,15 +200,9 @@ const MenuPage: React.FC = () => {
             {filteredItems.map((item) => (
               <div key={item.id} className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow">
                 <div className="relative">
-                  <img
-                    src={item.image_url || '/placeholder-pizza.svg'}
-                    alt={item.name}
-                    className="w-full h-48 object-cover"
-                    onError={(e) => {
-                      console.error('Image failed to load:', item.image_url);
-                      e.currentTarget.src = '/placeholder-pizza.svg'
-                    }}
-                  />
+                  <div className="w-full h-48 bg-gradient-to-br from-red-100 to-red-200 flex items-center justify-center">
+                    <span className="text-6xl">🍕</span>
+                  </div>
                   {/* Fallback for when image fails to load */}
                   <div className="absolute inset-0 bg-gray-100 flex items-center justify-center" style={{ display: 'none' }}>
                     <PhotoIcon className="h-12 w-12 text-gray-400" />

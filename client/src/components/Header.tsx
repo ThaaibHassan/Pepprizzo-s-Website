@@ -49,11 +49,9 @@ const Header = () => {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center">
-            <img 
-              src="/g2.svg" 
-              alt="Peprizzo's Logo" 
-              className="h-10 w-auto max-w-[200px]"
-            />
+            <div className="h-10 w-32 bg-red-600 text-white flex items-center justify-center font-bold text-lg rounded">
+              PEPRIZZO
+            </div>
           </Link>
 
           {/* Desktop Navigation */}
