@@ -30,6 +30,10 @@ export const useSocketStore = create<SocketStore>((set, get) => ({
     // Don't initialize if already connected
     if (socket?.connected) return
 
+    // DISABLED FOR DEMO - no socket connection
+    console.log('Socket connection disabled for demo');
+    return;
+
     // Create new socket connection
     const newSocket = io(import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000', {
       transports: ['websocket', 'polling'],

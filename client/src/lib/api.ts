@@ -1,10 +1,10 @@
 import axios from 'axios'
 import toast from 'react-hot-toast'
 
-// Create axios instance
+// Create axios instance - DISABLED FOR DEMO
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5001/api',
-  timeout: 10000,
+  baseURL: 'https://httpbin.org/delay/1', // Fake URL that will fail gracefully
+  timeout: 1000, // Very short timeout
   headers: {
     'Content-Type': 'application/json',
   },
