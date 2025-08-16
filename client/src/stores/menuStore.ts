@@ -153,7 +153,7 @@ export const useMenuStore = create<MenuState>()(
       // Update menu item (admin only)
       updateMenuItem: async (id: number, updates: Partial<MenuItem>) => {
         try {
-          const response = await api.put(endpoints.admin.updateMenuItem(id), updates);
+          const response = await api.put(endpoints.admin.updateMenuItem(id.toString()), updates);
           const updatedItem = response.data.data.menu_item;
           
           set(state => ({
@@ -170,7 +170,7 @@ export const useMenuStore = create<MenuState>()(
       // Delete menu item (admin only)
       deleteMenuItem: async (id: number) => {
         try {
-          await api.delete(endpoints.admin.deleteMenuItem(id));
+          await api.delete(endpoints.admin.deleteMenuItem(id.toString()));
           
           set(state => ({
             menuItems: state.menuItems.filter(item => item.id !== id)
