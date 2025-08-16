@@ -8,21 +8,15 @@ import {
   FireIcon,
   HeartIcon
 } from '@heroicons/react/24/outline'
-import { useQuery } from '@tanstack/react-query'
-import { apiHelpers, endpoints } from '../lib/api'
+import { mockMenuItems } from '../data/mockData'
 
 const HomePage = () => {
   // Scroll to top when component mounts
   useEffect(() => {
     window.scrollTo(0, 0)
   }, [])
-  // Fetch featured menu items
-  const { data: featuredData, isLoading: featuredLoading } = useQuery({
-    queryKey: ['featured-menu'],
-    queryFn: () => apiHelpers.get(endpoints.menu.featured),
-  })
-
-  const featuredItems = featuredData?.data?.featured_items || []
+  // Use mock data for featured items
+  const featuredItems = mockMenuItems.filter(item => item.is_featured)
 
   return (
     <div className="min-h-screen">
@@ -132,7 +126,7 @@ const HomePage = () => {
             </p>
           </div>
 
-          {featuredLoading ? (
+          {featuredItems.length === 0 ? (
             <div className="grid md:grid-cols-3 gap-8">
               {[1, 2, 3].map((i) => (
                 <div key={i} className="card animate-pulse">
@@ -147,9 +141,8 @@ const HomePage = () => {
             </div>
           ) : (
             <div className="grid md:grid-cols-3 gap-8">
-              {featuredItems.slice(0, 3).map((category: any) => 
-                category.items?.slice(0, 1).map((item: any) => (
-                  <div key={item.id} className="card group hover:shadow-lg transition-shadow duration-300">
+              {featuredItems.slice(0, 3).map((item: any) => (
+                <div key={item.id} className="card group hover:shadow-lg transition-shadow duration-300">
                     <div className="relative h-48 bg-gray-200 rounded-t-lg overflow-hidden">
                       {item.image_url ? (
                         <img 
@@ -189,10 +182,9 @@ const HomePage = () => {
                           Order Now
                         </Link>
                       </div>
-                    </div>
-                  </div>
-                ))
-              )}
+                                      </div>
+                </div>
+              ))}
             </div>
           )}
 
