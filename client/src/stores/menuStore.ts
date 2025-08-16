@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { api } from '../lib/api';
+import { mockMenuItems, mockCategories } from '../data/mockData';
 
 export interface MenuItem {
   id: number;
@@ -97,10 +98,38 @@ export const useMenuStore = create<MenuState>()(
           set({ menuItems, isLoading: false });
         } catch (error: any) {
           console.error('Error fetching menu items:', error);
-          set({ 
-            error: error.response?.data?.error || 'Failed to fetch menu items', 
-            isLoading: false 
-          });
+          // Fall back to mock data for demo purposes
+          const { filters } = get();
+          let filteredItems = mockMenuItems;
+          
+          // Apply filters to mock data
+          if (filters.category !== 'all') {
+            filteredItems = filteredItems.filter(item => item.category === filters.category);
+          }
+          if (filters.search) {
+            filteredItems = filteredItems.filter(item => 
+              item.name.toLowerCase().includes(filters.search.toLowerCase()) ||
+              item.description.toLowerCase().includes(filters.search.toLowerCase())
+            );
+          }
+          if (filters.vegetarian) {
+            filteredItems = filteredItems.filter(item => item.is_vegetarian);
+          }
+          if (filters.spicy) {
+            filteredItems = filteredItems.filter(item => item.is_spicy);
+          }
+          if (filters.featured) {
+            filteredItems = filteredItems.filter(item => item.is_featured);
+          }
+          
+          // Apply sorting
+          if (filters.sortBy === 'price') {
+            filteredItems.sort((a, b) => a.price - b.price);
+          } else if (filters.sortBy === 'name') {
+            filteredItems.sort((a, b) => a.name.localeCompare(b.name));
+          }
+          
+          set({ menuItems: filteredItems, isLoading: false });
         }
       },
 
@@ -113,10 +142,8 @@ export const useMenuStore = create<MenuState>()(
           set({ categories, isCategoriesLoading: false });
         } catch (error: any) {
           console.error('Error fetching categories:', error);
-          set({ 
-            categoriesError: error.response?.data?.error || 'Failed to fetch categories', 
-            isCategoriesLoading: false 
-          });
+          // Fall back to mock data for demo purposes
+          set({ categories: mockCategories, isCategoriesLoading: false });
         }
       },
 

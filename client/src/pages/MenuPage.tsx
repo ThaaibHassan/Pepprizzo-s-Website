@@ -73,7 +73,7 @@ const MenuPage: React.FC = () => {
   });
 
   // Show error if any
-  if (error) {
+  if (error && menuItems.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
