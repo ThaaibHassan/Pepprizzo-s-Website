@@ -2,32 +2,37 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
+const { userStore } = require('../data/inMemoryStore');
 
 const router = express.Router();
 
-// Demo users for presentation
-const demoUsers = [
-  {
-    id: 1,
-    first_name: 'John',
-    last_name: 'Doe',
-    email: 'john@example.com',
-    password: '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', // password
-    phone: '(555) 123-4567',
-    role: 'customer',
-    created_at: new Date().toISOString()
-  },
-  {
-    id: 2,
-    first_name: 'Admin',
-    last_name: 'User',
-    email: 'admin@peprizzos.com',
-    password: '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', // password
-    phone: '(555) 987-6543',
-    role: 'admin',
-    created_at: new Date().toISOString()
+// Initialize demo users if they don't exist
+const initializeDemoUsers = () => {
+  const existingUsers = userStore.getAllUsers();
+  if (existingUsers.length === 0) {
+    // Add demo users
+    userStore.createUser({
+      first_name: 'John',
+      last_name: 'Doe',
+      email: 'john@example.com',
+      password: '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', // password
+      phone: '(555) 123-4567',
+      role: 'customer'
+    });
+    
+    userStore.createUser({
+      first_name: 'Admin',
+      last_name: 'User',
+      email: 'admin@peprizzos.com',
+      password: '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', // password
+      phone: '(555) 987-6543',
+      role: 'admin'
+    });
   }
-];
+};
+
+// Initialize demo users on startup
+initializeDemoUsers();
 
 // @route   POST /api/auth/register
 // @desc    Register a new user
@@ -51,7 +56,7 @@ router.post('/register', [
     const { first_name, last_name, email, password, phone } = req.body;
 
     // Check if user already exists
-    const existingUser = demoUsers.find(user => user.email === email);
+    const existingUser = userStore.getUserByEmail(email);
     if (existingUser) {
       return res.status(400).json({
         success: false,
@@ -64,18 +69,14 @@ router.post('/register', [
     const hashedPassword = await bcrypt.hash(password, salt);
 
     // Create new user
-    const newUser = {
-      id: demoUsers.length + 1,
+    const newUser = userStore.createUser({
       first_name,
       last_name,
       email,
       password: hashedPassword,
       phone,
-      role: 'customer',
-      created_at: new Date().toISOString()
-    };
-
-    demoUsers.push(newUser);
+      role: 'customer'
+    });
 
     // Create JWT token
     const token = jwt.sign(
@@ -122,8 +123,8 @@ router.post('/login', [
 
     const { email, password } = req.body;
 
-    // Find user
-    const user = demoUsers.find(u => u.email === email);
+    // Find user by email
+    const user = userStore.getUserByEmail(email);
     if (!user) {
       return res.status(400).json({
         success: false,
@@ -172,18 +173,16 @@ router.post('/login', [
 // @access  Private
 router.get('/me', async (req, res) => {
   try {
-    // For demo, we'll get user from token
-    const token = req.headers.authorization?.replace('Bearer ', '');
-    if (!token) {
+    // Get user from token (middleware will set this)
+    const userId = req.user?.userId;
+    if (!userId) {
       return res.status(401).json({
         success: false,
-        error: 'No token provided'
+        error: 'Not authorized'
       });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'demo-secret');
-    const user = demoUsers.find(u => u.id === decoded.userId);
-
+    const user = userStore.getUser(userId);
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -191,6 +190,7 @@ router.get('/me', async (req, res) => {
       });
     }
 
+    // Remove password from response
     const { password: _, ...userWithoutPassword } = user;
 
     res.json({
@@ -201,52 +201,10 @@ router.get('/me', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Get current user error:', error);
-    res.status(401).json({
+    console.error('Get user error:', error);
+    res.status(500).json({
       success: false,
-      error: 'Invalid token'
-    });
-  }
-});
-
-// @route   GET /api/auth/profile
-// @desc    Get user profile
-// @access  Private
-router.get('/profile', async (req, res) => {
-  try {
-    // For demo, we'll get user from token
-    const token = req.headers.authorization?.replace('Bearer ', '');
-    if (!token) {
-      return res.status(401).json({
-        success: false,
-        error: 'No token provided'
-      });
-    }
-
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'demo-secret');
-    const user = demoUsers.find(u => u.id === decoded.userId);
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        error: 'User not found'
-      });
-    }
-
-    const { password: _, ...userWithoutPassword } = user;
-
-    res.json({
-      success: true,
-      data: {
-        user: userWithoutPassword
-      }
-    });
-
-  } catch (error) {
-    console.error('Get profile error:', error);
-    res.status(401).json({
-      success: false,
-      error: 'Invalid token'
+      error: 'Server error'
     });
   }
 });
@@ -256,10 +214,13 @@ router.get('/profile', async (req, res) => {
 // @access  Private
 router.post('/logout', async (req, res) => {
   try {
+    // In a real app, you might want to blacklist the token
+    // For demo purposes, we'll just return success
     res.json({
       success: true,
       message: 'Logged out successfully'
     });
+
   } catch (error) {
     console.error('Logout error:', error);
     res.status(500).json({

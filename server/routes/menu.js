@@ -1,11 +1,5 @@
 const express = require('express');
-const pool = require('../config/database');
-
-// Import demo data for mock database
-const demoData = require('../config/database').demoData || {
-  categories: [],
-  menuItems: []
-};
+const { menuStore } = require('../data/inMemoryStore');
 
 const router = express.Router();
 
@@ -14,10 +8,11 @@ const router = express.Router();
 // @access  Public
 router.get('/categories', async (req, res) => {
   try {
+    const categories = menuStore.getCategories();
     res.json({
       success: true,
       data: {
-        categories: demoData.categories
+        categories: categories
       }
     });
 
@@ -44,31 +39,13 @@ router.get('/', async (req, res) => {
       sort = 'name'
     } = req.query;
 
-    let items = [...demoData.menuItems];
-
-    // Apply filters
-    if (category && category !== 'all') {
-      items = items.filter(item => item.category === category);
-    }
-
-    if (vegetarian === 'true') {
-      items = items.filter(item => item.is_vegetarian);
-    }
-
-    if (spicy === 'true') {
-      items = items.filter(item => item.is_spicy);
-    }
-
-    if (featured === 'true') {
-      items = items.filter(item => item.is_featured);
-    }
-
-    if (search) {
-      items = items.filter(item => 
-        item.name.toLowerCase().includes(search.toLowerCase()) ||
-        item.description.toLowerCase().includes(search.toLowerCase())
-      );
-    }
+    let items = menuStore.getMenuItems({
+      category,
+      vegetarian,
+      spicy,
+      featured,
+      search
+    });
 
     // Apply sorting
     if (sort === 'price_low') {
@@ -104,143 +81,21 @@ router.get('/', async (req, res) => {
 });
 
 // @route   GET /api/menu/featured
-// @desc    Get featured menu items (for home page)
+// @desc    Get featured menu items
 // @access  Public
 router.get('/featured', async (req, res) => {
   try {
-    // Get featured items from mock database
-    const featuredItems = demoData.menuItems.filter(item => item.is_featured);
+    const featuredItems = menuStore.getMenuItems({ featured: 'true' });
     
-    // Group by category
-    const categories = demoData.categories.slice(0, 3);
-    const groupedItems = categories.map(category => ({
-      category,
-      items: featuredItems.filter(item => item.category === category.name).slice(0, 4)
-    }));
-
     res.json({
       success: true,
       data: {
-        featured_items: groupedItems
+        featured_items: featuredItems
       }
     });
 
   } catch (error) {
-    console.error('Get featured menu error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Server error'
-    });
-  }
-});
-
-// @route   GET /api/menu/:id
-// @desc    Get specific menu item
-// @access  Public
-router.get('/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const result = await pool.query(`
-      SELECT 
-        mi.id,
-        mi.name,
-        mi.description,
-        mi.price,
-        mi.image_url,
-        mi.is_vegetarian,
-        mi.is_vegan,
-        mi.is_gluten_free,
-        mi.is_spicy,
-        mi.preparation_time,
-        mi.calories,
-        mi.allergens,
-        mi.customizations,
-        c.name as category_name,
-        c.id as category_id
-      FROM menu_items mi
-      LEFT JOIN categories c ON mi.category_id = c.id
-      WHERE mi.id = $1 AND mi.is_available = true
-    `, [id]);
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        error: 'Menu item not found'
-      });
-    }
-
-    res.json({
-      success: true,
-      data: {
-        menu_item: result.rows[0]
-      }
-    });
-
-  } catch (error) {
-    console.error('Get menu item error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Server error'
-    });
-  }
-});
-
-// @route   GET /api/menu/category/:categoryId
-// @desc    Get menu items by category
-// @access  Public
-router.get('/category/:categoryId', async (req, res) => {
-  try {
-    const { categoryId } = req.params;
-
-    // First check if category exists
-    const categoryResult = await pool.query(`
-      SELECT id, name, description, image_url
-      FROM categories 
-      WHERE id = $1 AND is_active = true
-    `, [categoryId]);
-
-    if (categoryResult.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        error: 'Category not found'
-      });
-    }
-
-    const category = categoryResult.rows[0];
-
-    // Get menu items for this category
-    const menuResult = await pool.query(`
-      SELECT 
-        id,
-        name,
-        description,
-        price,
-        image_url,
-        is_vegetarian,
-        is_vegan,
-        is_gluten_free,
-        is_spicy,
-        preparation_time,
-        calories,
-        allergens,
-        customizations
-      FROM menu_items 
-      WHERE category_id = $1 AND is_available = true
-      ORDER BY name ASC
-    `, [categoryId]);
-
-    res.json({
-      success: true,
-      data: {
-        category,
-        menu_items: menuResult.rows,
-        total: menuResult.rows.length
-      }
-    });
-
-  } catch (error) {
-    console.error('Get category menu error:', error);
+    console.error('Get featured items error:', error);
     res.status(500).json({
       success: false,
       error: 'Server error'
@@ -253,51 +108,28 @@ router.get('/category/:categoryId', async (req, res) => {
 // @access  Public
 router.get('/search', async (req, res) => {
   try {
-    const { q, limit = 10 } = req.query;
-
-    if (!q || q.trim().length === 0) {
+    const { q: searchQuery } = req.query;
+    
+    if (!searchQuery) {
       return res.status(400).json({
         success: false,
         error: 'Search query is required'
       });
     }
 
-    const result = await pool.query(`
-      SELECT 
-        mi.id,
-        mi.name,
-        mi.description,
-        mi.price,
-        mi.image_url,
-        mi.is_vegetarian,
-        mi.is_vegan,
-        mi.is_gluten_free,
-        mi.is_spicy,
-        c.name as category_name
-      FROM menu_items mi
-      LEFT JOIN categories c ON mi.category_id = c.id
-      WHERE mi.is_available = true 
-        AND (mi.name ILIKE $1 OR mi.description ILIKE $1)
-      ORDER BY 
-        CASE 
-          WHEN mi.name ILIKE $1 THEN 1
-          ELSE 2
-        END,
-        mi.name ASC
-      LIMIT $2
-    `, [`%${q.trim()}%`, parseInt(limit)]);
-
+    const searchResults = menuStore.getMenuItems({ search: searchQuery });
+    
     res.json({
       success: true,
       data: {
-        search_results: result.rows,
-        total: result.rows.length,
-        query: q.trim()
+        search_results: searchResults,
+        total: searchResults.length,
+        query: searchQuery
       }
     });
 
   } catch (error) {
-    console.error('Search menu error:', error);
+    console.error('Search menu items error:', error);
     res.status(500).json({
       success: false,
       error: 'Server error'
@@ -306,50 +138,93 @@ router.get('/search', async (req, res) => {
 });
 
 // @route   GET /api/menu/filters
-// @desc    Get available filters for menu items
+// @desc    Get available filters for menu
 // @access  Public
 router.get('/filters', async (req, res) => {
   try {
-    // Get dietary filters counts
-    const dietaryResult = await pool.query(`
-      SELECT 
-        COUNT(*) FILTER (WHERE is_vegetarian = true) as vegetarian_count,
-        COUNT(*) FILTER (WHERE is_vegan = true) as vegan_count,
-        COUNT(*) FILTER (WHERE is_gluten_free = true) as gluten_free_count,
-        COUNT(*) FILTER (WHERE is_spicy = true) as spicy_count
-      FROM menu_items 
-      WHERE is_available = true
-    `);
-
-    // Get price ranges
-    const priceResult = await pool.query(`
-      SELECT 
-        MIN(price) as min_price,
-        MAX(price) as max_price,
-        AVG(price) as avg_price
-      FROM menu_items 
-      WHERE is_available = true
-    `);
-
-    // Get all allergens
-    const allergensResult = await pool.query(`
-      SELECT DISTINCT unnest(allergens) as allergen
-      FROM menu_items 
-      WHERE is_available = true AND allergens IS NOT NULL
-      ORDER BY allergen
-    `);
-
+    const categories = menuStore.getCategories();
+    const allItems = menuStore.getMenuItems();
+    
+    const filters = {
+      categories: categories.map(cat => ({
+        value: cat.name,
+        label: cat.display_name,
+        count: allItems.filter(item => item.category === cat.name).length
+      })),
+      price_range: {
+        min: Math.min(...allItems.map(item => item.price)),
+        max: Math.max(...allItems.map(item => item.price))
+      },
+      dietary_options: {
+        vegetarian: allItems.filter(item => item.is_vegetarian).length,
+        spicy: allItems.filter(item => item.is_spicy).length
+      }
+    };
+    
     res.json({
       success: true,
-      data: {
-        dietary: dietaryResult.rows[0],
-        price_range: priceResult.rows[0],
-        allergens: allergensResult.rows.map(row => row.allergen)
-      }
+      data: filters
     });
 
   } catch (error) {
     console.error('Get filters error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Server error'
+    });
+  }
+});
+
+// @route   GET /api/menu/:id
+// @desc    Get menu item by ID
+// @access  Public
+router.get('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const menuItem = menuStore.getMenuItem(id);
+    
+    if (!menuItem) {
+      return res.status(404).json({
+        success: false,
+        error: 'Menu item not found'
+      });
+    }
+    
+    res.json({
+      success: true,
+      data: {
+        menu_item: menuItem
+      }
+    });
+
+  } catch (error) {
+    console.error('Get menu item error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Server error'
+    });
+  }
+});
+
+// @route   GET /api/menu/category/:category
+// @desc    Get menu items by category
+// @access  Public
+router.get('/category/:category', async (req, res) => {
+  try {
+    const { category } = req.params;
+    const categoryItems = menuStore.getMenuItems({ category });
+    
+    res.json({
+      success: true,
+      data: {
+        category_items: categoryItems,
+        total: categoryItems.length,
+        category: category
+      }
+    });
+
+  } catch (error) {
+    console.error('Get category items error:', error);
     res.status(500).json({
       success: false,
       error: 'Server error'

@@ -1,10 +1,12 @@
 import axios from 'axios'
 import toast from 'react-hot-toast'
 
-// Create axios instance - DISABLED FOR DEMO
+// Create axios instance for production
 export const api = axios.create({
-  baseURL: 'https://httpbin.org/delay/1', // Fake URL that will fail gracefully
-  timeout: 1000, // Very short timeout
+  baseURL: process.env.NODE_ENV === 'production' 
+    ? 'https://peprizzos-backend.onrender.com/api'  // Production backend URL
+    : 'http://localhost:5001/api', // Local development backend URL
+  timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
   },

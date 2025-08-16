@@ -1,86 +1,70 @@
 const jwt = require('jsonwebtoken');
+const { userStore } = require('../data/inMemoryStore');
 
-// Demo users for auth middleware
-const demoUsers = [
-  {
-    id: 1,
-    first_name: 'John',
-    last_name: 'Doe',
-    email: 'john@example.com',
-    phone: '(555) 123-4567',
-    role: 'customer',
-    is_active: true,
-    created_at: new Date().toISOString()
-  },
-  {
-    id: 2,
-    first_name: 'Admin',
-    last_name: 'User',
-    email: 'admin@peprizzos.com',
-    phone: '(555) 987-6543',
-    role: 'admin',
-    is_active: true,
-    created_at: new Date().toISOString()
-  }
-];
-
-const protect = async (req, res, next) => {
-  let token;
-
-  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-    token = req.headers.authorization.split(' ')[1];
-  } else if (req.cookies && req.cookies.token) {
-    token = req.cookies.token;
-  }
-
-  if (!token) {
-    return res.status(401).json({
-      success: false,
-      error: 'Not authorized to access this route'
-    });
-  }
-
+const auth = (req, res, next) => {
   try {
+    // Get token from header
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        error: 'No token, authorization denied'
+      });
+    }
+
     // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'demo-secret');
-
-    // Get user from demo data
-    const user = demoUsers.find(u => u.id === decoded.userId);
-
+    
+    // Get user from store
+    const user = userStore.getUser(decoded.userId);
     if (!user) {
       return res.status(401).json({
         success: false,
-        error: 'User not found'
+        error: 'Token is not valid'
       });
     }
 
-    if (!user.is_active) {
-      return res.status(401).json({
-        success: false,
-        error: 'Account is deactivated'
-      });
-    }
-
-    req.user = user;
+    // Add user info to request
+    req.user = decoded;
     next();
+    
   } catch (error) {
-    return res.status(401).json({
+    console.error('Auth middleware error:', error);
+    res.status(401).json({
       success: false,
-      error: 'Not authorized to access this route'
+      error: 'Token is not valid'
     });
   }
 };
 
-const authorize = (...roles) => {
-  return (req, res, next) => {
-    if (!roles.includes(req.user.role)) {
-      return res.status(403).json({
+const adminAuth = (req, res, next) => {
+  try {
+    // First check if user is authenticated
+    if (!req.user) {
+      return res.status(401).json({
         success: false,
-        error: `User role ${req.user.role} is not authorized to access this route`
+        error: 'Not authorized'
       });
     }
+
+    // Check if user is admin
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied. Admin role required.'
+      });
+    }
+
     next();
-  };
+    
+  } catch (error) {
+    console.error('Admin auth middleware error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Server error'
+    });
+  }
 };
 
-module.exports = { protect, authorize };
+module.exports = { auth, adminAuth };

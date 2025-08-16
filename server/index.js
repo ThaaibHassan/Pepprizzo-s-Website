@@ -5,14 +5,11 @@ const morgan = require('morgan');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const session = require('express-session');
-const RedisStore = require('connect-redis').default;
 const { createServer } = require('http');
 const { Server } = require('socket.io');
 require('dotenv').config();
 
-const pool = require('./config/database');
-const redisClient = require('./config/redis');
-const errorHandler = require('./middleware/errorHandler');
+// Import routes
 const authRoutes = require('./routes/auth');
 const menuRoutes = require('./routes/menu');
 const orderRoutes = require('./routes/orders');
@@ -25,21 +22,18 @@ const app = express();
 const server = createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: process.env.CLIENT_URL || "http://localhost:3000",
+    origin: process.env.CLIENT_URL || ["http://localhost:3000", "http://localhost:3001", "https://peprizzos-pizza.netlify.app"],
     methods: ["GET", "POST"]
   },
-  // Prevent too many connections in development
   maxHttpBufferSize: 1e6,
   pingTimeout: 60000,
   pingInterval: 25000
 });
 
-// Connect to databases
-
-// Rate limiting - more lenient in development
+// Rate limiting
 const limiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || (process.env.NODE_ENV === 'development' ? 1000 : 100), // more lenient in development
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: process.env.NODE_ENV === 'development' ? 1000 : 100,
   message: 'Too many requests from this IP, please try again later.'
 });
 
@@ -48,12 +42,12 @@ app.use(helmet());
 app.use(compression());
 app.use(morgan('combined'));
 app.use(cors({
-  origin: process.env.CLIENT_URL || ["http://localhost:3000", "http://localhost:3001"],
+  origin: process.env.CLIENT_URL || ["http://localhost:3000", "http://localhost:3001", "https://peprizzos-pizza.netlify.app"],
   credentials: true
 }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-// app.use(limiter); // Temporarily disabled for development
+app.use(limiter);
 
 // Session configuration
 const sessionConfig = {
@@ -67,22 +61,7 @@ const sessionConfig = {
   }
 };
 
-// Only use Redis store if Redis is available and connected
-if (redisClient && redisClient.isReady) {
-  try {
-    sessionConfig.store = new RedisStore({ client: redisClient });
-    console.log('✅ Using Redis for session storage');
-  } catch (error) {
-    console.warn('⚠️  Redis store not available, using memory store');
-  }
-} else {
-  console.log('ℹ️  Using memory store for sessions (Redis not available)');
-}
-
 app.use(session(sessionConfig));
-
-// Static files
-app.use('/uploads', express.static('uploads'));
 
 // Health check
 app.get('/health', (req, res) => {
@@ -125,9 +104,6 @@ io.on('connection', (socket) => {
 
 // Make io available to routes
 app.set('io', io);
-
-// Error handling middleware
-app.use(errorHandler);
 
 // 404 handler
 app.use('*', (req, res) => {
