@@ -81,70 +81,47 @@ export const useMenuStore = create<MenuState>()(
       // Fetch menu items
       fetchMenuItems: async () => {
         set({ isLoading: true, error: null });
-        try {
-          const { filters } = get();
-          const params = new URLSearchParams();
-          
-          if (filters.category !== 'all') params.append('category', filters.category);
-          if (filters.search) params.append('search', filters.search);
-          if (filters.sortBy) params.append('sort', filters.sortBy);
-          if (filters.vegetarian) params.append('vegetarian', 'true');
-          if (filters.spicy) params.append('spicy', 'true');
-          if (filters.featured) params.append('featured', 'true');
-          
-          const response = await api.get(`/menu/?${params}`);
-          const menuItems = response.data.data.menu_items || [];
-          
-          set({ menuItems, isLoading: false });
-        } catch (error: any) {
-          console.error('Error fetching menu items:', error);
-          // Fall back to mock data for demo purposes
-          const { filters } = get();
-          let filteredItems = mockMenuItems;
-          
-          // Apply filters to mock data
-          if (filters.category !== 'all') {
-            filteredItems = filteredItems.filter(item => item.category === filters.category);
-          }
-          if (filters.search) {
-            filteredItems = filteredItems.filter(item => 
-              item.name.toLowerCase().includes(filters.search.toLowerCase()) ||
-              item.description.toLowerCase().includes(filters.search.toLowerCase())
-            );
-          }
-          if (filters.vegetarian) {
-            filteredItems = filteredItems.filter(item => item.is_vegetarian);
-          }
-          if (filters.spicy) {
-            filteredItems = filteredItems.filter(item => item.is_spicy);
-          }
-          if (filters.featured) {
-            filteredItems = filteredItems.filter(item => item.is_featured);
-          }
-          
-          // Apply sorting
-          if (filters.sortBy === 'price') {
-            filteredItems.sort((a, b) => a.price - b.price);
-          } else if (filters.sortBy === 'name') {
-            filteredItems.sort((a, b) => a.name.localeCompare(b.name));
-          }
-          
-          set({ menuItems: filteredItems, isLoading: false });
+        
+        // For demo purposes, use mock data directly instead of API calls
+        const { filters } = get();
+        let filteredItems = mockMenuItems;
+        
+        // Apply filters to mock data
+        if (filters.category !== 'all') {
+          filteredItems = filteredItems.filter(item => item.category === filters.category);
         }
+        if (filters.search) {
+          filteredItems = filteredItems.filter(item => 
+            item.name.toLowerCase().includes(filters.search.toLowerCase()) ||
+            item.description.toLowerCase().includes(filters.search.toLowerCase())
+          );
+        }
+        if (filters.vegetarian) {
+          filteredItems = filteredItems.filter(item => item.is_vegetarian);
+        }
+        if (filters.spicy) {
+          filteredItems = filteredItems.filter(item => item.is_spicy);
+        }
+        if (filters.featured) {
+          filteredItems = filteredItems.filter(item => item.is_featured);
+        }
+        
+        // Apply sorting
+        if (filters.sortBy === 'price') {
+          filteredItems.sort((a, b) => a.price - b.price);
+        } else if (filters.sortBy === 'name') {
+          filteredItems.sort((a, b) => a.name.localeCompare(b.name));
+        }
+        
+        set({ menuItems: filteredItems, isLoading: false });
       },
 
       // Fetch categories
       fetchCategories: async () => {
         set({ isCategoriesLoading: true, categoriesError: null });
-        try {
-          const response = await api.get('/menu/categories');
-          const categories = response.data.data.categories || [];
-          set({ categories, isCategoriesLoading: false });
-        } catch (error: any) {
-          console.error('Error fetching categories:', error);
-          // Fall back to mock data for demo purposes
-          set({ categories: mockCategories, isCategoriesLoading: false });
-        }
+        
+        // For demo purposes, use mock data directly instead of API calls
+        set({ categories: mockCategories, isCategoriesLoading: false });
       },
 
       // Add menu item
