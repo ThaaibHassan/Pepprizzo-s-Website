@@ -3,7 +3,7 @@ services:
     name: peprizzos-backend
     env: node
     plan: free
-    buildCommand: npm run install-all
+    buildCommand: npm install
     startCommand: npm start
     envVars:
       - key: NODE_ENV
